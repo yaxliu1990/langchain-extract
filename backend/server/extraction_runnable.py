@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator, exceptions
@@ -32,8 +32,8 @@ class ExtractionExample(BaseModel):
     """
 
     text: str = Field(..., description="The input text")
-    output: List[Dict[str, Any]] = Field(
-        ..., description="The expected output of the example. A list of objects."
+    output: Dict[str, Any] = Field(
+        ..., description="The expected output of the example."
     )
 
 
@@ -61,10 +61,10 @@ class ExtractRequest(CustomUserType):
         return v
 
 
-class ExtractResponse(TypedDict):
+class ExtractResponse(Dict):
     """Response body for the extract endpoint."""
 
-    data: List[Any]
+    Dict[str, Any]
 
 
 def _deduplicate(
@@ -88,6 +88,25 @@ def _deduplicate(
     return {
         "data": unique_extracted,
     }
+
+
+def _merge(
+    extract_responses: Sequence[ExtractResponse],
+) -> ExtractResponse:
+    """Merge the results.
+
+    For primitive fields, keep the first one, for array fields, concatinate them.
+    """
+    merged_extracted = {}
+    for response in extract_responses:
+        for key, value in response.items():
+            if key not in merged_extracted:
+                merged_extracted[key] = value
+            else:
+                if isinstance(value, list):
+                    merged_extracted[key].extend(value)
+
+    return merged_extracted
 
 
 def _cast_example_to_dict(example: Example) -> Dict[str, Any]:
@@ -208,4 +227,5 @@ async def extract_entire_document(
         extraction_requests, {"max_concurrency": 1}
     )
     # Deduplicate the results
-    return _deduplicate(extract_responses)
+    # return _deduplicate(extract_responses)
+    return _merge(extract_responses)

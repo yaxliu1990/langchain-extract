@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import os
 
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
+from langchain.globals import set_debug, set_verbose
 from sqlalchemy.engine import URL
 
+
 MODEL_NAME = "gpt-3.5-turbo"
-CHUNK_SIZE = int(4_096 * 0.8)
+CHUNK_SIZE = int(5000)
 # Max concurrency for the model.
 MAX_CONCURRENCY = 1
+
+set_debug(True)
+set_verbose(True)
 
 
 def get_postgres_url() -> URL:
@@ -23,6 +28,10 @@ def get_postgres_url() -> URL:
     return url
 
 
-def get_model() -> ChatOpenAI:
+def get_model() -> AzureChatOpenAI:
     """Get the model."""
-    return ChatOpenAI(model=MODEL_NAME, temperature=0)
+    return AzureChatOpenAI(
+        deployment_name="gpt-35-turbo-0125",
+        model_version="0125",
+        temperature=0,
+    )

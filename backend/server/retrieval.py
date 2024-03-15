@@ -5,7 +5,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableLambda
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 
 from db.models import Extractor
 from server.extraction_runnable import (
@@ -45,7 +45,7 @@ async def extract_from_content(
     docs = text_splitter.create_documents([content])
     doc_contents = [doc.page_content for doc in docs]
 
-    vectorstore = FAISS.from_texts(doc_contents, embedding=OpenAIEmbeddings())
+    vectorstore = FAISS.from_texts(doc_contents, embedding=AzureOpenAIEmbeddings(azure_deployment="text-embedding-3-small"))
     retriever = vectorstore.as_retriever()
 
     runnable = (

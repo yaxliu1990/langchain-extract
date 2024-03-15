@@ -1,5 +1,5 @@
 """Endpoints for managing definition of examples.."""
-from typing import Any, List
+from typing import Any, List, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -21,7 +21,7 @@ class CreateExample(TypedDict):
     extractor_id: Annotated[UUID, "The extractor ID that this is an example for."]
     content: Annotated[str, "The input portion of the example."]
     output: Annotated[
-        List[Any], "JSON object that is expected to be extracted from the content."
+        Dict[str, Any], "JSON object that is expected to be extracted from the content."
     ]
 
 

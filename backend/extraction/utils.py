@@ -24,7 +24,7 @@ def convert_json_schema_to_openai_schema(
     schema: dict,
     *,
     rm_titles: bool = True,
-    multi: bool = True,
+    multi: bool = False,
 ) -> dict:
     """Convert JSON schema to a corresponding OpenAI function call."""
     if multi:
@@ -41,7 +41,8 @@ def convert_json_schema_to_openai_schema(
             "required": ["data"],
         }
     else:
-        raise NotImplementedError("Only multi is supported for now.")
+        # raise NotImplementedError("Only multi is supported for now.")
+        schema_ = dereference_refs(schema)
 
     schema_.pop("definitions", None)
 
