@@ -8,7 +8,8 @@ from sqlalchemy.engine import URL
 
 
 MODEL_NAME = "gpt-3.5-turbo"
-CHUNK_SIZE = int(5000)
+CHUNK_SIZE = int(250)
+CHUNK_OVERLAP = int(0)
 # Max concurrency for the model.
 MAX_CONCURRENCY = 1
 

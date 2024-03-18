@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from fastapi import HTTPException
 from jsonschema import Draft202012Validator, exceptions
 from langchain.chains.openai_functions import create_openai_fn_runnable
-from langchain.text_splitter import TokenTextSplitter
+from langchain.text_splitter import TokenTextSplitter, MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import chain
@@ -18,7 +18,7 @@ from db.models import Example, Extractor
 from extraction.utils import (
     convert_json_schema_to_openai_schema,
 )
-from server.settings import CHUNK_SIZE, MODEL_NAME, get_model
+from server.settings import CHUNK_SIZE, CHUNK_OVERLAP, MODEL_NAME, get_model
 from server.validators import validate_json_schema
 
 # Instantiate the model
@@ -105,6 +105,8 @@ def _merge(
             else:
                 if isinstance(value, list):
                     merged_extracted[key].extend(value)
+                elif merged_extracted[key] == '' and value != '':
+                    merged_extracted[key] = value
 
     return merged_extracted
 
@@ -141,11 +143,7 @@ def _make_prompt_template(
             # support other encoding strategies. The function calling logic here
             # has some hard-coded assumptions (e.g., name of parameters like `data`).
             function_call = {
-                "arguments": json.dumps(
-                    {
-                        "data": example.output,
-                    }
-                ),
+                "arguments": json.dumps(example.output, sort_keys=True),
                 "name": function_name,
             }
             few_shot_prompt.extend(
@@ -207,11 +205,50 @@ async def extract_entire_document(
 
     json_schema = extractor.schema
     examples = get_examples_from_extractor(extractor)
-    text_splitter = TokenTextSplitter(
+
+    # text_splitter = TokenTextSplitter(
+    #     chunk_size=CHUNK_SIZE,
+    #     chunk_overlap=0,
+    #     model_name=MODEL_NAME,
+    # )
+    # texts = text_splitter.split_text(content)
+
+    # MD seperators
+    seperators = [
+        # First, try to split along Markdown headings (starting with level 2)
+        "\n#{1,6} ",
+        # Note the alternative syntax for headings (below) is not handled here
+        # Heading level 2
+        # ---------------
+        # End of code block
+        "```\n",
+        # Horizontal lines
+        "\n\\*\\*\\*+\n",
+        "\n---+\n",
+        "\n___+\n",
+        # Note that this splitter doesn't handle horizontal lines defined
+        # by *three or more* of ***, ---, or ___, but this is not handled
+        # Triple newlines for table or figure boundaries
+        "\n\n\n",
+        # Double newlines for paragraph boundaries
+        "\n\n",
+        # Line
+        "\n",
+        # Word
+        " ",
+        "",
+    ]
+
+    # Char-level splits
+    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        separators=seperators,
+        keep_separator=True,
+        is_separator_regex=True,
         chunk_size=CHUNK_SIZE,
-        chunk_overlap=20,
-        model_name=MODEL_NAME,
+        chunk_overlap=CHUNK_OVERLAP
     )
+
+    # Split
     texts = text_splitter.split_text(content)
     extraction_requests = [
         ExtractRequest(
